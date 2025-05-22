@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PlusCircle, Clock, FileText, AlertTriangle } from 'lucide-react';
 import { Task, Importance } from '../types/task';
 import { getLocalISOString } from '../utils/dateUtils';
+import emailjs from 'emailjs-com';
 
 interface TaskFormProps {
   addTask: (task: Task) => void;
@@ -14,27 +15,49 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
   const [importance, setImportance] = useState<Importance>('medium');
   const [dateTime, setDateTime] = useState(getLocalISOString(new Date()));
   const [error, setError] = useState('');
-  
+
+  // Function to send email using EmailJS
+  const sendEmail = (taskName: string) => {
+    console.log('Sending email for task:', taskName); // Debug log
+    emailjs.send(
+      'service_ryk270l',      // Replace with your EmailJS Service ID
+      'template_voc5x0a',     // Replace with your EmailJS Template ID
+      {
+        task_name: taskName,
+        notes: 'This is a reminder from your TODO app',
+      },
+      'Detrf4-KNCVaO7aW-'       // Replace with your EmailJS Public Key
+    )
+    .then(
+      (response) => {
+        console.log('SUCCESS!', response.status, response.text);
+      },
+      (err) => {
+        console.log('FAILED...', err);
+      }
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
       setError('Title is required');
       return;
     }
-    
+
     if (!dateTime) {
       setError('Due date and time are required');
       return;
     }
-    
+
     const dueDate = new Date(dateTime);
-    
+
     if (dueDate < new Date()) {
       setError('Due date and time must be in the future');
       return;
     }
-    
+
     const newTask: Task = {
       id: uuidv4(),
       title: title.trim(),
@@ -42,11 +65,29 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
       importance,
       dueDate,
       completed: false,
-      notified: false
+      notified: false,
     };
-    
+
     addTask(newTask);
-    
+
+    // 👉 Email is sent after task is added
+  emailjs.send(
+    'service_ryk270l',
+    'template_voc5x0a',
+    {
+      task_name: newTask.title,
+      notes: newTask.description || 'No notes provided',
+    },
+    'Detrf4-KNCVaO7aW-'
+  ).then(
+    (response) => {
+      console.log('SUCCESS!', response.status, response.text);
+    },
+    (err) => {
+      console.log('FAILED...', err);
+    }
+  );
+
     // Reset form
     setTitle('');
     setDescription('');
@@ -54,14 +95,14 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
     setDateTime(getLocalISOString(new Date()));
     setError('');
   };
-  
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6 transition-all duration-300 hover:shadow-lg">
       <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center">
         <PlusCircle className="mr-2" size={20} />
         Add New Task
       </h2>
-      
+
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -76,7 +117,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
             placeholder="Enter task title"
           />
         </div>
-        
+
         <div className="mb-4">
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
             <FileText className="mr-1" size={16} />
@@ -91,7 +132,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
             rows={3}
           />
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label htmlFor="importance" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -109,7 +150,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
               <option value="high">High</option>
             </select>
           </div>
-          
+
           <div>
             <label htmlFor="dateTime" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               <Clock className="mr-1" size={16} />
@@ -124,13 +165,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
             />
           </div>
         </div>
-        
+
         {error && (
           <div className="mb-4 p-2 bg-red-100 text-red-700 rounded-md text-sm">
             {error}
           </div>
         )}
-        
+
         <button
           type="submit"
           className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
