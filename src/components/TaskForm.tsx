@@ -16,28 +16,31 @@ const TaskForm: React.FC<TaskFormProps> = ({ addTask }) => {
   const [dateTime, setDateTime] = useState(getLocalISOString(new Date()));
   const [userEmail, setUserEmail] = useState('');
   const [error, setError] = useState('');
+const sendEmail = (taskName: string, notes: string, toEmail: string) => {
+  console.log("Sending email to:", toEmail);  // ✅ Log the email address
 
-  const sendEmail = (taskName: string, toEmail: string) => {
-    emailjs.send(
-      'service_ryk270l',    // Replace with your EmailJS Service ID
-      'service_ryk270l',   // Replace with your EmailJS Template ID
-      {
-        task_name: taskName,
-        notes: 'This is a reminder from your TODO app',
-        to_email: toEmail,  // dynamic recipient email
-      },
-      'Detrf4-KNCVaO7aW-'     // Replace with your EmailJS Public Key
-    )
-    .then(response => {
-      console.log('SUCCESS!', response.status, response.text);
-    })
-    .catch(err => {
-      console.log('FAILED...', err);
-    });
-  };
+  emailjs.send(
+    'service_ryk270l',
+    'service_ryk270l',
+    {
+      task_name: taskName,
+      notes: notes,
+      to_email: toEmail,  // Ensure this matches your EmailJS template field
+    },
+    'Detrf4-KNCVaO7aW-'
+  )
+  .then((response) => {
+    console.log('Email sent!', response.status, response.text);  // ✅ Log success
+  })
+  .catch((err) => {
+    console.error('Email sending failed:', err);  // ✅ Log failure
+  });
+};
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    sendEmail(title, description, userEmail);
 
     // Validation
     if (!title.trim()) {
