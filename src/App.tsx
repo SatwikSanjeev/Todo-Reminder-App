@@ -5,9 +5,9 @@ import TaskList from './components/TaskList';
 import EmptyState from './components/EmptyState';
 import { Task } from './types/task';
 import { saveTasks, loadTasks } from './utils/localStorage';
-import { 
-  requestNotificationPermission, 
-  checkAndTriggerNotifications 
+import {
+  requestNotificationPermission,
+  checkAndTriggerNotifications,
 } from './utils/notifications';
 
 function App() {
@@ -16,14 +16,22 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  // Load tasks from localStorage on initial render
+  // Load tasks and request notification permission on mount
   useEffect(() => {
     const savedTasks = loadTasks();
     setTasks(savedTasks);
-    
-    // Check if notifications are already permitted
-    if (Notification.permission === 'granted') {
-      setNotificationsEnabled(true);
+
+    // Automatically request notification permission if not denied
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setNotificationsEnabled(true);
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            setNotificationsEnabled(true);
+          }
+        });
+      }
     }
   }, []);
 
@@ -39,35 +47,35 @@ function App() {
     const checkNotifications = () => {
       checkAndTriggerNotifications(tasks, markTaskNotified);
     };
-    
+
     // Check immediately
     checkNotifications();
-    
+
     // Then check every minute
     const intervalId = setInterval(checkNotifications, 60 * 1000);
-    
+
     return () => clearInterval(intervalId);
   }, [tasks, notificationsEnabled]);
 
   const addTask = (task: Task) => {
-    setTasks(prevTasks => [...prevTasks, task]);
+    setTasks((prevTasks) => [...prevTasks, task]);
   };
 
   const toggleTaskComplete = (id: string) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
         task.id === id ? { ...task, completed: !task.completed } : task
       )
     );
   };
 
   const deleteTask = (id: string) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
   };
 
   const markTaskNotified = (id: string) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
         task.id === id ? { ...task, notified: true } : task
       )
     );
@@ -79,23 +87,39 @@ function App() {
   };
 
   const toggleDarkMode = () => {
-    setDarkMode(prev => !prev);
+    setDarkMode((prev) => !prev);
   };
 
   return (
     <div className={darkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-gray-100 transition-colors duration-300 dark:bg-gray-900">
-        <Header 
-          darkMode={darkMode} 
-          toggleDarkMode={toggleDarkMode} 
-          requestNotifications={handleRequestNotifications} 
+        <Header
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
+          requestNotifications={handleRequestNotifications}
         />
-        
+
         <main className="container mx-auto px-4 pb-12 max-w-3xl">
+          {/* 🔔 Notification Test Button */}
+          <button
+            onClick={() => {
+              if (Notification.permission === 'granted') {
+                new Notification('🔔 Test Notification', {
+                  body: 'Notifications are working on your device!',
+                });
+              } else {
+                alert('Notification permission is not granted.');
+              }
+            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
+          >
+            Send Test Notification
+          </button>
+
           {tasks.length === 0 && <EmptyState />}
-          
+
           <TaskForm addTask={addTask} />
-          
+
           <TaskList
             tasks={tasks}
             onToggleComplete={toggleTaskComplete}
