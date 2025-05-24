@@ -1,136 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Header from './components/Header';
 import TaskForm from './components/TaskForm';
 import TaskList from './components/TaskList';
-import EmptyState from './components/EmptyState';
-import { Task } from './types/task';
-import { saveTasks, loadTasks } from './utils/localStorage';
-import {
-  requestNotificationPermission,
-  checkAndTriggerNotifications,
-} from './utils/notifications';
+import { Task } from './types';
+import emailjs from 'emailjs-com';
 
-function App() {
+const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [filter, setFilter] = useState('all');
-  const [darkMode, setDarkMode] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Load tasks and request notification permission on mount
   useEffect(() => {
-    const savedTasks = loadTasks();
-    setTasks(savedTasks);
-
-    // Automatically request notification permission if not denied
-    if ('Notification' in window) {
-      if (Notification.permission === 'granted') {
-        setNotificationsEnabled(true);
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then((permission) => {
-          if (permission === 'granted') {
-            setNotificationsEnabled(true);
-          }
-        });
-      }
-    }
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', prefersDark);
   }, []);
 
-  // Save tasks to localStorage whenever they change
-  useEffect(() => {
-    saveTasks(tasks);
-  }, [tasks]);
-
-  // Set up notification checking interval
-  useEffect(() => {
-    if (!notificationsEnabled) return;
-
-    const checkNotifications = () => {
-      checkAndTriggerNotifications(tasks, markTaskNotified);
-    };
-
-    // Check immediately
-    checkNotifications();
-
-    // Then check every minute
-    const intervalId = setInterval(checkNotifications, 60 * 1000);
-
-    return () => clearInterval(intervalId);
-  }, [tasks, notificationsEnabled]);
-
   const addTask = (task: Task) => {
-    setTasks((prevTasks) => [...prevTasks, task]);
+    setTasks([...tasks, task]);
   };
 
-  const toggleTaskComplete = (id: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const updateTask = (updatedTask: Task) => {
+    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
   };
 
   const deleteTask = (id: string) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+    setTasks(tasks.filter(task => task.id !== id));
   };
 
-  const markTaskNotified = (id: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, notified: true } : task
-      )
-    );
+  const markAllAsComplete = () => {
+    setTasks(tasks.map(task => ({ ...task, completed: true })));
   };
 
-  const handleRequestNotifications = async () => {
-    const granted = await requestNotificationPermission();
-    setNotificationsEnabled(granted);
+  const clearCompletedTasks = () => {
+    setTasks(tasks.filter(task => !task.completed));
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => !prev);
+  const filteredTasks = tasks.filter(task =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sendTasksViaEmail = () => {
+    const message = tasks.map(t => `${t.title} - ${t.description} [${t.completed ? 'Completed' : 'Pending'}]`).join('\n');
+    emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', {
+      message,
+      to_name: 'User',
+      from_name: 'Task App'
+    }, 'YOUR_USER_ID')
+    .then(() => alert('Email sent!'))
+    .catch(err => alert('Failed to send email: ' + err));
   };
+
+  const completedCount = tasks.filter(task => task.completed).length;
 
   return (
-    <div className={darkMode ? 'dark' : ''}>
-      <div className="min-h-screen bg-gray-100 transition-colors duration-300 dark:bg-gray-900">
-        <Header
-          darkMode={darkMode}
-          toggleDarkMode={toggleDarkMode}
-          requestNotifications={handleRequestNotifications}
-        />
-
-        <main className="container mx-auto px-4 pb-12 max-w-3xl">
-          {/* 🔔 Notification Test Button */}
-          <button
-            onClick={() => {
-              if (Notification.permission === 'granted') {
-                new Notification('🔔 Test Notification', {
-                  body: 'Notifications are working on your device!',
-                });
-              } else {
-                alert('Notification permission is not granted.');
-              }
-            }}
-            className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
-          >
-            Send Test Notification
-          </button>
-
-          {tasks.length === 0 && <EmptyState />}
-
-          <TaskForm addTask={addTask} />
-
-          <TaskList
-            tasks={tasks}
-            onToggleComplete={toggleTaskComplete}
-            onDelete={deleteTask}
-            filter={filter}
-            setFilter={setFilter}
-          />
-        </main>
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-4">
+      <Header setSearchQuery={setSearchQuery} />
+      <TaskForm addTask={addTask} />
+      <div className="flex justify-between items-center my-4">
+        <p>{completedCount} of {tasks.length} tasks completed</p>
+        <div className="space-x-2">
+          <button className="btn" onClick={markAllAsComplete}>Mark All Complete</button>
+          <button className="btn" onClick={clearCompletedTasks}>Clear Completed</button>
+          <button className="btn" onClick={sendTasksViaEmail}>Send via Email</button>
+        </div>
       </div>
+      <TaskList tasks={filteredTasks} updateTask={updateTask} deleteTask={deleteTask} />
     </div>
   );
-}
+};
 
 export default App;
