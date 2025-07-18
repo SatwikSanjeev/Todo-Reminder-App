@@ -34,5 +34,5 @@ Unlike a basic to‑do list, TodoNotify offers **smart reminders, progress track
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/todonotify.git
+   git clone https://github.com/SatwikSanjeev/todonotify.git
    cd todonotify
